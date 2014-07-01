@@ -1,5 +1,10 @@
 # TODO: multi-line reading
+import operator as op
 z = raw_input()
+
+binop = {'+': op.add, '-': op.sub, '/': op.div, '*': op.mul, '%': op.mod,
+        '<': op.lt, '<=': op.le, 'eq?': op.eq, 'neq?': op.ne, '>': op.ge,
+        '>=': op.gt}
 
 # string -> token
 def tokenize(s):
@@ -27,19 +32,9 @@ def calc(t):
         token = t
     if type(token) == str:
         # TODO: support for negative nums
-        if token == '+':
-            return (calc(t[0]) + calc(t[1]))
-        elif token == '-':
-            return (calc(t[0]) - calc(t[1]))
-        elif token == '/':
-            return (calc(t[0]) / calc(t[1]))
-        elif token == '*':
-            return (calc(t[0]) * calc(t[1]))
-        elif token == '%':
-            return (calc(t[0]) % calc(t[1]))
+        if token in binop:
+            return binop[token](calc(t[0]), calc(t[1]))
         # only works for numbers
-        elif token == "eq?":
-            return (calc(t[0]) == calc(t[1]))
         elif token == "cons":
             if (type(t[1]) == list):
                 li = calc(t[1])

@@ -31,10 +31,11 @@ def calc(t):
     else:
         token = t
     if type(token) == str:
-        # TODO: support for negative nums
         if token in binop:
             return binop[token](calc(t[0]), calc(t[1]))
         # only works for numbers
+        elif token == "quote" or token == '\'':
+            return t[0]
         elif token == "cons":
             if (type(t[1]) == list):
                 li = calc(t[1])
@@ -43,8 +44,14 @@ def calc(t):
                 li = [calc(t[0])]
                 li.append(calc(t[1]))
             return li
-        elif token == "quote":
-            return t[0]
+        # TODO does not account for (car '(1 2 3)), for which returns '
+        # also accepts types other than list
+        elif token == "car":
+            return t[0][0]
+        elif token == "cdr":
+            li = t[0]
+            li.pop(0)
+            return li
         else:
             return token
     elif type(token) == list:

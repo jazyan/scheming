@@ -1,3 +1,4 @@
+# TODO: multi-line reading
 z = raw_input()
 
 # string -> token
@@ -25,6 +26,7 @@ def calc(t):
     else:
         token = t
     if type(token) == str:
+        # TODO: support for negative nums
         if token == '+':
             return (calc(t[0]) + calc(t[1]))
         elif token == '-':
@@ -33,19 +35,36 @@ def calc(t):
             return (calc(t[0]) / calc(t[1]))
         elif token == '*':
             return (calc(t[0]) * calc(t[1]))
+        elif token == '%':
+            return (calc(t[0]) % calc(t[1]))
+        # only works for numbers
+        elif token == "eq?":
+            return (calc(t[0]) == calc(t[1]))
+        elif token == "cons":
+            if (type(t[1]) == list):
+                li = calc(t[1])
+                li.insert(0, calc(t[0]))
+            else:
+                li = [calc(t[0])]
+                li.append(calc(t[1]))
+            return li
+        elif token == "quote":
+            return t[0]
         else:
-            return SyntaxError("only these functions for now")
+            return token
     elif type(token) == list:
         return calc(token)
     else:
-        try: return int(token)
-        except ValueError: return SyntaxError("only calculator for now")
+        return token
 
 def atom(token):
     try: return int(token)
     except ValueError:
         try: return float(token)
         except ValueError:
+            #TODO: remove double quotes
             return str(token)
 
-print "answer!", calc(parse(tokenize(z)))
+print "TOKENS!", tokenize(z)
+print "PARSE!", parse(tokenize(z))
+print "ANSWER!", calc(parse(tokenize(z)))

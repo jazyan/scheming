@@ -1,5 +1,7 @@
 ; ch 1-5 of The Little Schemer
 
+(define (atom? x) (not (pair? x)))
+
 ; operations
 (define add1 
  (lambda (n)

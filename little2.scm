@@ -198,6 +198,183 @@
       (else (cons (revpair (car rel))
                   (revrel (cdr rel)))))))
 
-; CHAPTER 8 
+; CHAPTER 8 lambda/currying/ABSTRACTION
 
+(define rember-f
+  (lambda (test? a l)
+    (cond 
+      ((null? l) (quote ()))
+      ((test? (car l) a) (cdr l))
+      (else (cons (car l) (rember-f test? a (cdr l)))))))
 
+(define eq?-c
+  (lambda (a)
+    (lambda (x)
+      (equal? x a))))
+
+(define eq1
+  (lambda (x)
+    (equal? x 1)))
+
+(define insertL-f
+  (lambda (test?)
+    (lambda (new old l)
+      (cond
+        ((null? l) (quote ()))
+        ((test? (car l) old)
+         (cons new (cons old (cdr l))))
+        (else (cons (car l) ((insertL-f test?) new old (cdr l))))))))
+
+(define insertR-f
+  (lambda (test?)
+    (lambda (new old l)
+      (cond
+        ((null? l) (quote ()))
+        ((test? (car l) old)
+         (cons old (cons new (cdr l))))
+        (else (cons (car l) ((insertR-f test?) new old (cdr l))))))))
+
+(define seqL
+  (lambda (new old l)
+    (cons new (cons old l))))
+
+(define seqR
+  (lambda (new old l)
+    (cons old (cons new l))))
+
+(define seqS
+  (lambda (new old l)
+    (cons new l)))
+
+(define insert-g
+  (lambda (seq)
+    (lambda (new old l)
+      (cond
+        ((null? l) (quote ()))
+        ((equal? (car l) old)
+         (seq new old (cdr l)))
+        (else (cons (car l) ((insert-g seq) new old (cdr l))))))))
+
+(define insertL2 (insert-g seqL))
+(define insertR2 (insert-g seqR))
+(define subst (insert-g seqS))
+
+(define seqrem
+  (lambda (new old l)
+    l))
+
+(define rember2 
+  (lambda (a l)
+    ((insert-g seqrem) #f a l)))
+
+(define multirember-f
+  (lambda (test?)
+    (lambda (a lat)
+      (cond
+        ((null? lat) (quote ()))
+        ((test? a (car lat))
+         ((multirember-f test?) a (cdr lat)))
+        (else
+          (cons (car lat) ((multirember-f test?) a (cdr lat))))))))
+
+(define multiremberT
+  (lambda (test? lat)
+    (cond
+      ((null? lat) (quote ()))
+      ((test? (car lat))
+       (multiremberT test? (cdr lat)))
+      (else (cons (car lat) (multiremberT test? (cdr lat)))))))
+
+(define a-friend
+  (lambda (x y)
+    (length y)))
+
+(define new-friend
+  (lambda (newlat seen)
+    (a-friend newlat
+         (cons (car lat) seen))))
+
+(define latest-friend
+  (lambda (newlat seen)
+    (a-friend (cons (car lat) newlat) seen)))
+
+; col = "collector"/ "continuation"
+(define multiremberCO
+  (lambda (a lat col)
+    (cond
+      ((null? lat) (col (quote ()) (quote ())))
+      ((equal? (car lat) a) (multiremberCO a (cdr lat)
+        (lambda (newlat seen) (col newlat (cons (car lat) seen)))))
+      (else (multiremberCO a (cdr lat)
+        (lambda (newlat seen) (col (cons (car lat) newlat) seen)))))))
+
+(define multiinsertLR
+  (lambda (new oldL oldR lat)
+    (cond
+      ((null? lat) (quote ()))
+      ((equal? (car lat) oldL) 
+       (cons new (cons oldL (multiinsertLR new oldL oldR (cdr lat)))))
+      ((equal? (car lat) oldR)
+       (cons oldR (cons new (multiinsertLR new oldL oldR (cdr lat)))))
+      (else (cons (car lat) (multiinsertLR new oldL oldR (cdr lat)))))))
+
+(define help!
+  (lambda (lat Lc Rc)
+    (and (display lat) (display Lc) (display Rc))))
+
+(define multiinsertLRco
+  (lambda (new oldL oldR lat col)
+    (cond
+      ((null? lat) (col (quote ()) 0 0))
+      ((equal? (car lat) oldL)
+       (multiinsertLRco new oldL oldR (cdr lat) 
+        (lambda (newlat L R) 
+          (col (cons new (cons oldL newlat)) (+ 1 L) R))))
+      ((equal? (car lat) oldR)
+       (multiinsertLRco new oldL oldR (cdr lat)
+        (lambda (newlat L R)
+          (col (cons oldR (cons new newlat)) L (+ 1 R)))))
+      (else
+        (multiinsertLRco new oldL oldR (cdr lat)
+         (lambda (newlat L R)
+           (col (cons (car lat) newlat) L R)))))))
+
+(define evens-only*
+  (lambda (l)
+    (cond
+      ((null? l) (quote ()))
+      ((atom? (car l))
+       (cond
+         ((even? (car l)) (cons (car l) (evens-only* (cdr l))))
+         (else (evens-only* (cdr l)))))
+      (else
+        (cons (evens-only* (car l)) (evens-only* (cdr l)))))))
+
+(define help-eoCO*!
+  (lambda (L E O)
+    (and (display L) (display E) (display O))))
+
+(define test-eoCO*! '((9 1 2 8) 3 10 ((9 9) 7 6) 2))
+
+(define the-last-friend
+  (lambda (newl product sum)
+    (cons sum (cons product newl))))
+
+(define evens-onlyCO*
+  (lambda (l col)
+    (cond
+      ((null? l) (col (quote ()) 1 0))
+      ((atom? (car l))
+       (cond
+         ((even? (car l)) 
+          (evens-onlyCO* (cdr l) 
+            (lambda (newl E O) 
+              (col (cons (car l) newl) (* (car l) E) O))))
+         (else
+           (evens-onlyCO* (cdr l)
+            (lambda (newl E O)
+              (col newl E (+ (car l) O)))))))
+      (else
+        (evens-onlyCO* (car l) (lambda (al ae ao) 
+           (evens-onlyCO* (cdr l) (lambda (bl be bo)
+              (col (cons al bl) (* ae be) (+ ao bo))))))))))

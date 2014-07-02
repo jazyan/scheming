@@ -378,3 +378,146 @@
         (evens-onlyCO* (car l) (lambda (al ae ao) 
            (evens-onlyCO* (cdr l) (lambda (bl be bo)
               (col (cons al bl) (* ae be) (+ ao bo))))))))))
+
+; CHAPTER 9: partial functions
+
+(define eternity
+  (lambda (x)
+    (eternity x)))
+
+; takes ((a b) c) to (a (b c))
+(define shift
+  (lambda (pair)
+    (build (first (first pair))
+      (build (second (first pair))
+        (second pair)))))
+
+; total
+(define align
+  (lambda (pora)
+    (cond
+      ((atom? pora) pora)
+      ((a-pair (first pora))
+       (align (shift pora)))
+      (else (build (first pora) (align (second pora)))))))
+
+(define weight*
+  (lambda (pora)
+    (cond
+      ((atom? pora) 1)
+      (else 
+        (+ (* (weight* (first pora)) 2)
+           (weight* (second pora)))))))
+
+; partial: ((a b) (c d)) to ((c d) (d c)) to ((a b) (c d)) ...
+(define shuffle
+  (lambda (pora)
+    (cond
+      ((atom? pora) pora)
+      ((a-pair (first pora)) (shuffle (revapir pora)))
+      (else (build (first pora) (shuffle (second pora)))))))
+
+; no one knows if this is partial or total??
+(define C
+  (lambda (n)
+    (cond
+      ((= 1 n) 1)
+      ((even? n) (C (/ n 2)))
+      (else (C (+ 1 (* 3 n)))))))
+
+(define A
+  (lambda (n m)
+    (cond 
+      ((zero? n) (+ 1 m))
+      ((zero? m) (A (- 1 n) 1))
+      (else (A (- 1 n) (A n (- 1 m)))))))
+
+; cannot define in language! Turing and Godel
+(define will-stop?
+  (lambda (x)
+    (cond
+      (will-stop? x #t)
+      (else #f))))
+
+; if last-try stops, then (and #t #f) -> #f, but if last-try doesn't
+; then (and #f ...) -> which stops -> #t
+(define last-try
+  (lambda (x)
+    (and (will-stop? last-try) (eternity x))))
+
+; length
+(define len
+  (lambda (l)
+    (cond
+      ((null? l) 0)
+      (else (+ 1 (len (cdr l)))))))
+
+; w/o define, same as len_0
+(lambda (l)
+  (cond
+    ((null? l) 0)
+    (else (add1 (eternity (cdr l))))))
+
+; len_1
+(lambda (l)
+  (cond
+    ((null? l) 0)
+    (else (+ 1 
+           ((lambda (l) 
+            (cond
+              ((null? l) 0)
+              (else (+ 1 (eternity (cdr l)))))) (cdr l))))))
+
+; len_0
+((lambda (len)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (+ 1 (len (cdr l))))))) eternity)
+
+; len_1
+((lambda (len)
+   (lambda (l)
+     (cond 
+       ((null? l) 0)
+       (else (+ 1 (len (cdr l)))))))
+ ((lambda (len2)
+    (lambda (l)
+      (cond
+        ((null? l) 0)
+        (else (+ 1 (len2 (cdr l)))))))
+  eternity))
+
+; len_0
+((lambda (mk-len)
+   (mk-len eternity))
+ (lambda (len)
+   (lambda (l)
+     (cond 
+       ((null? l) 0)
+       (else (+ 1 (len (cdr l))))))))
+
+; len_0
+((lambda (mk-len)
+   (mk-len mk-len))
+ (lambda (len)
+   (lambda (l)
+     (cond 
+       ((null? l) 0)
+       (else (+ 1 (len (cdr l))))))))
+
+; what is going on??
+((lambda (mk-len)
+   (mk-len mk-len))
+ (lambda (mk-len)
+   (lambda (l)
+     (cond
+       ((null? l) 0)
+       (else (+ 1 ((mk-len eternity) (cdr l))))))))
+
+; almighty Y combinator
+(define Y
+  (lambda (le)
+    ((lambda (f) (f f))
+     (lambda (f)
+       (le (lambda (x) ((f f) x)))))))

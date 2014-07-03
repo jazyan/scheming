@@ -445,79 +445,191 @@
   (lambda (x)
     (and (will-stop? last-try) (eternity x))))
 
-; length
-(define len
-  (lambda (l)
-    (cond
-      ((null? l) 0)
-      (else (+ 1 (len (cdr l)))))))
-
-; w/o define, same as len_0
-(lambda (l)
-  (cond
-    ((null? l) 0)
-    (else (add1 (eternity (cdr l))))))
-
-; len_1
-(lambda (l)
-  (cond
-    ((null? l) 0)
-    (else (+ 1 
-           ((lambda (l) 
-            (cond
-              ((null? l) 0)
-              (else (+ 1 (eternity (cdr l)))))) (cdr l))))))
-
-; len_0
-((lambda (len)
-   (lambda (l)
-     (cond
-       ((null? l) 0)
-       (else (+ 1 (len (cdr l))))))) eternity)
-
-; len_1
-((lambda (len)
-   (lambda (l)
-     (cond 
-       ((null? l) 0)
-       (else (+ 1 (len (cdr l)))))))
- ((lambda (len2)
-    (lambda (l)
-      (cond
-        ((null? l) 0)
-        (else (+ 1 (len2 (cdr l)))))))
-  eternity))
-
-; len_0
-((lambda (mk-len)
-   (mk-len eternity))
- (lambda (len)
-   (lambda (l)
-     (cond 
-       ((null? l) 0)
-       (else (+ 1 (len (cdr l))))))))
-
-; len_0
-((lambda (mk-len)
-   (mk-len mk-len))
- (lambda (len)
-   (lambda (l)
-     (cond 
-       ((null? l) 0)
-       (else (+ 1 (len (cdr l))))))))
-
-; what is going on??
-((lambda (mk-len)
-   (mk-len mk-len))
- (lambda (mk-len)
-   (lambda (l)
-     (cond
-       ((null? l) 0)
-       (else (+ 1 ((mk-len eternity) (cdr l))))))))
-
-; almighty Y combinator
+; almighty Y combinator. See ycomb.scm for derivation.
 (define Y
   (lambda (le)
     ((lambda (f) (f f))
      (lambda (f)
        (le (lambda (x) ((f f) x)))))))
+
+; CHAPTER 10: interpreter
+
+(define lookup-help
+  (lambda (name names vals entry-f)
+    (cond
+      ((null? names) (entry-f name))
+      ((equal? (car names) name) (car vals))
+      (else (lookup-help name (cdr names) (cdr vals) entry-f)))))
+
+; entry defines as pair of lists, first list = set, second list same len
+(define lookup-entry
+  (lambda (name entry entry-f)
+    (lookup-help name (first entry) (second entry) entry-f)))
+
+; finds value in list of entries 
+(define lookup-table
+  (lambda (name table table-f)
+    (cond 
+      ((null? table) (table-f name))
+      (else (lookup-entry name 
+              (car table) (lambda (name)
+                            (lookup-table name (cdr table) table-f)))))))
+
+; actions are functions that represent types
+(define expression-to-action
+  (lambda (e)
+    (cond
+      ((atom? e) (atom-to-action e))
+      (else (list-to-action e)))))
+
+(define atom-to-action
+  (lambda (e)
+    (cond
+      ((number? e) *const)
+      ((equal? e #t) *const)
+      ((equal? e #f) *const)
+      ((equal? e (quote cons)) *const)
+      ((equal? e (quote car)) *const)
+      ((equal? e (quote cdr)) *const)
+      ((equal? e (quote null?)) *const)
+      ((equal? e (quote eq?)) *const)
+      ((equal? e (quote atom?)) *const)
+      ((equal? e (quote zero?)) *const)
+      ((equal? e (quote number?)) *const)
+      (else *identifier))))
+
+(define list-to-action
+  (lambda (e)
+    (cond
+      ((atom? (car e))
+       (cond 
+         ((equal? (car e) (quote quote)) *quote)
+         ((equal? (car e) (quote lambda)) *lambda)
+         ((equal? (car e) (quote cond)) *cond)
+         (else *application)))
+      (else *application))))
+
+(define value
+  (lambda (e)
+    (meaning e (quote ()))))
+
+(define meaning
+  (lambda (e table)
+    ((expression-to-action e) e table)))
+
+(define *const
+  (lambda (e table)
+    (cond
+      ((number? e) e)
+      ((equal? e #t) #t)
+      ((equal? e #f) #f)
+      (else (build (quote primitive) e)))))
+
+(define *quote
+  (lambda (e table)
+    (second e)))
+
+(define *identifier
+  (lambda (e table)
+    (lookup-in-table e table initial-table)))
+
+(define initial-table 
+  (lambda (name)
+    (car (quote ()))))
+
+(define *lambda
+  (lambda (e table)
+    (build (quote non-primitive) (cons table (cdr e)))))
+
+(define table-of first)
+(define formals-of second)
+(define body-of third)
+
+(define evcon
+  (lambda (lines table)
+    (cond
+      ((else? (question-of (car lines)))
+       (meaning (answer-of (car lines)) table))
+      ((meaning (question-of (car lines)) table)
+        (meaning (answer-of (car lines)) table))
+      (else (evcon (cdr lines) table)))))
+
+; helpers for evcon
+(define else? 
+  (lambda (x)
+    (cond
+      ((atom? x) (equal? x (quote else)))
+      (else #f))))
+
+(define question-of first)
+(define answer-of second)
+
+(define *cond
+  (lambda (e table)
+    (evcon (cdr e) table)))
+
+(define evlis
+  (lambda (args table)
+    (cond 
+      ((null? args) (quote ()))
+      (else
+        (cons (meaning (car args) table)
+              (evlis (cdr args) table))))))
+
+(define *application
+  (lambda (e table)
+    (apply
+      (meaning (car e) table)
+      (evlis (cdr e) table))))
+
+(define primitive? 
+  (lambda (l)
+    (equal? (first l) (quote primitive))))
+
+(define non-primitive?
+  (lambda (l)
+    (equal? (first l) (quote non-primitive))))
+
+(define apply
+  (lambda (fun vals)
+    (cond
+      ((primitive? fun) (apply-primitive (second fun) vals))
+      ((non-primitive? fun) (apply-closure (second fun) vals)))))
+
+(define apply-primitive
+  (lambda (name vals)
+    (cond
+      ((equal? name (quote cons))
+       (cons (first vals) (second vals)))
+      ((equal? name (quote car))
+       (car (first vals)))
+      ((equal? name (quote cdr))
+       (cdr (first vals)))
+      ((equal? name (quote null?))
+       (null? (first vals)))
+      ((equal? name (quote equal?))
+       (equal? (first vals) (second vals)))
+      ((equal? name (quote atom?))
+       (:atom? (first vals)))
+      ((equal? name (quote zero?))
+       (zero? (first vals)))
+      ((equal? name (quote number?))
+       (number? (first vals))))))
+
+(define :atom?
+  (lambda (x)
+    (cond
+      ((atom? x) #t)
+      ((null? x) #f)
+      ((equal? (car x) (quote primitive)) #t)
+      ((equal? (car x) (quote non-primitive)) #t)
+      (else #f))))
+
+(define apply-closure
+  (lambda (closure vals)
+    (meaning (body-of closure)
+      (extend-table
+        (new-entry
+          (formals-of closure)
+           vals)
+        (table-of closure)))))

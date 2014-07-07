@@ -11,7 +11,6 @@ class Env(dict):
         self.update(zip(parms, args))
         self.outer = outer
     def find(self, var):
-        print self, var
         return self if var in self else self.outer.find(var)
 
 def tokenize(s):
@@ -34,7 +33,6 @@ def parse(t):
 
 def interpret(t, env = Env()):
     if type(t) == str:
-        print "hello"
         return env.find(t)[t] #NOTE do not understand this
     elif type(t) != list:
         return t
@@ -73,11 +71,6 @@ def atom(token):
         try: return float(token)
         except ValueError:
             return str(token)
-'''
-print "TOKENS!", tokenize(z)
-print "PARSE!", parse(tokenize(z))
-print "ANSWER!", interpret(parse(tokenize(z)))
-'''
 
 while True:
     val = interpret(parse(tokenize(raw_input('jlis.py> '))))

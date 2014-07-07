@@ -3,16 +3,17 @@
 # Mostly an exercise for me to understand how interpreters work :)
 
 # NOTE: lists are defined by (list (1 2 3)) instead of '(1 2 3)
+# also, cond right now works only as an if-else. No elifs yet!
 
 import operator as op
 
 binop = {'+': op.add, '-': op.sub, '/': op.div, '*': op.mul, '%': op.mod,
-        '<': op.lt, '<=': op.le, 'eq?': op.eq, 'neq?': op.ne, '>': op.ge,
+        '<': op.lt, '<=': op.le, 'equal?': op.eq, 'neq?': op.ne, '>': op.ge,
         '>=': op.gt, 'cons': lambda x, y: [x] + y}
 
 unop = {'car': lambda x: x[0], 'cdr': lambda x: x[1:]}
 
-# the environment: needed for variables
+# the environment: stores variables in a dictionary with their values
 class Env(dict):
     def __init__(self, parms=(), args=(), outer=None):
         self.update(zip(parms, args))
@@ -51,7 +52,8 @@ def atom(token):
 # the meat of the interpreter
 def interpret(t, env = Env()):
     if type(t) == str:                  # if it is a symbol
-        return env.find(t)[t] #NOTE do not yet understand this
+        # env.find(t) returns env, [t] gets value
+        return env.find(t)[t]
     elif type(t) != list:               # if it is a constant
         return t
     elif t[0] in binop:                 # check the binops
@@ -71,7 +73,7 @@ def interpret(t, env = Env()):
         return exp
     elif t[0] == 'cond':
         (_, test, result, alt) = t
-        return interpret((result if eval(test, env) else alt), env)
+        return interpret((result if interpret(test, env) else alt), env)
     elif t[0] == 'define':
         (_, var, exp) = t
         env[var] = interpret(exp, env)

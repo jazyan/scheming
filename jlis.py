@@ -1,3 +1,9 @@
+# A limited Scheme interpreter written in Python
+# Lots of code from http://norvig.com/lispy.html.
+# Mostly an exercise for me to understand how interpreters work :)
+
+# NOTE: lists are defined by (list (1 2 3)) instead of '(1 2 3)
+
 import operator as op
 
 binop = {'+': op.add, '-': op.sub, '/': op.div, '*': op.mul, '%': op.mod,
@@ -6,6 +12,7 @@ binop = {'+': op.add, '-': op.sub, '/': op.div, '*': op.mul, '%': op.mod,
 
 unop = {'car': lambda x: x[0], 'cdr': lambda x: x[1:]}
 
+# the environment: needed for variables
 class Env(dict):
     def __init__(self, parms=(), args=(), outer=None):
         self.update(zip(parms, args))
@@ -13,9 +20,11 @@ class Env(dict):
     def find(self, var):
         return self if var in self else self.outer.find(var)
 
+# one-line lexer
 def tokenize(s):
     return s.replace("(", " ( ").replace(")", " ) ").split()
 
+# creates an AST in the form of a list of lists
 def parse(t):
     if len(t) == 0:
         raise SyntaxError('unexpected EOF')
@@ -31,21 +40,30 @@ def parse(t):
     else:
         return atom(token)
 
+# types
+def atom(token):
+    try: return int(token)
+    except ValueError:
+        try: return float(token)
+        except ValueError:
+            return str(token)
+
+# the meat of the interpreter
 def interpret(t, env = Env()):
-    if type(t) == str:
-        return env.find(t)[t] #NOTE do not understand this
-    elif type(t) != list:
+    if type(t) == str:                  # if it is a symbol
+        return env.find(t)[t] #NOTE do not yet understand this
+    elif type(t) != list:               # if it is a constant
         return t
-    elif t[0] in binop:
+    elif t[0] in binop:                 # check the binops
         (_, exp1, exp2) = t
         e1 = interpret(exp1, env)
         e2 = interpret(exp2, env)
         return binop[t[0]](e1, e2)
-    elif t[0] in unop:
+    elif t[0] in unop:                  # check the unops
         (_, exp) = t
         e = interpret(exp, env)
         return unop[t[0]](e)
-    elif t[0] == 'list':
+    elif t[0] == 'list':                # making list a unop does not work
         (_, exp) = t
         return list(exp)
     elif t[0] == 'quote':
@@ -61,17 +79,12 @@ def interpret(t, env = Env()):
         (_, var, exp) = t
         return lambda *args: interpret(exp, Env(var, args, env))
     else:
+    # the below (as I understand) is for calling user-defined functions
         exps = [interpret(exp, env) for exp in t]
         proc = exps.pop(0)
         return proc(*exps)
 
-def atom(token):
-    try: return int(token)
-    except ValueError:
-        try: return float(token)
-        except ValueError:
-            return str(token)
-
+# creating a REPL
 while True:
     val = interpret(parse(tokenize(raw_input('jlis.py> '))))
     if val is not None: print val

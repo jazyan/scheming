@@ -22,23 +22,29 @@
   (lambda (move rung board)
     (cond
       ((equal? rung A) (cons (cdr (A board)) (cdr board)))
-      ((equal? rung B) (cons (A board) (cons (cdr (B board)) (C board))))
-      ((equal? rung C) (cons (A board) (cons (B board) (cdr (C board))))))))
+      ((equal? rung B) 
+       (cons (A board) (cons (cdr (B board)) (cons (C board) (quote ())))))
+      ((equal? rung C) 
+       (cons (A board) (cons (B board) (cons (cdr (C board)) (quote ()))))))))
 
-(display (pop 1 C e))
+(display (pop 1 A test))
 
 (define insert
   (lambda (move rung board)
     (cond
       ((equal? rung A) (cons (cons move (A board)) (cdr board)))
       ((equal? rung B) 
-       (cons (A board) (cons (cons move (B board)) (C board))))
+       (cons (A board) (cons (cons move (B board)) (cons (C board) (quote ())))))
       ((equal? rung C) 
-       (cons (A board) (cons (B board) (cons move (C board))))))))
+       (cons (A board) (cons (B board) (cons (cons move (C board)) (quote ()))))))))
 
 (display "\n")
-(display (insert 1 B e))
+(display (insert 1 C test))
 (display "\n")
+
+(define update
+  (lambda (move start end board)
+    (and (pop move start board) (insert move end board))))
 
 (define stack?
   (lambda (board len end)
@@ -50,8 +56,6 @@
   (lambda (board)
     (stack? board n C)))
 
-; UPDATE BOARD
-
 (define hanoi
   (lambda (move start end use board)
     (cond
@@ -59,8 +63,9 @@
       ((equal? move 1) (display board))
       ((valid? move start end board) 
        (cond
-         ((stack?  move end) (hanoi (+ 1 move) start use end board))
-         (else (hanoi (- 1 move) start use end board))))
+         ((stack? move end) 
+          (hanoi (+ 1 move) start use end (update move start end board)))
+         (else (hanoi (- 1 move) start use end (update move start end board)))))
       (else (and (display move) (hanoi (- 1 move) start use end board))))))
 
-(hanoi 1 A C B s)
+(hanoi 2 A C B s)
